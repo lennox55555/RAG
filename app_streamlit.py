@@ -1,20 +1,32 @@
 import streamlit as st
-from rag_pipeline import create_rag_pipeline_from_env
-from text_similarity import TextSimilarityCalculator
 import os
-from dotenv import load_dotenv
-import pandas as pd
-import plotly.express as px
+import sys
 
-# Load environment variables
-load_dotenv()
-
-# Page configuration
+# Page configuration first, so we can display errors properly
 st.set_page_config(
     page_title="JFK Documents RAG System",
     page_icon="📚",
     layout="wide"
 )
+
+# Try importing dependencies and handle errors gracefully
+try:
+    from dotenv import load_dotenv
+    import pandas as pd
+    import plotly.express as px
+    # Only import these after confirming the basic imports work
+    from rag_pipeline import create_rag_pipeline_from_env
+    from text_similarity import TextSimilarityCalculator
+except ImportError as e:
+    st.error(f"Error importing required dependencies: {str(e)}")
+    st.info("Please check that all required packages are installed correctly.")
+    st.stop()
+
+# Load environment variables
+try:
+    load_dotenv()
+except Exception as e:
+    st.warning(f"Warning loading environment variables: {str(e)}")
 
 # Initialize the RAG pipeline and similarity calculator
 @st.cache_resource
