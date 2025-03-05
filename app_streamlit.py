@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import sys
+import threading
 
 # Page configuration first, so we can display errors properly
 st.set_page_config(
@@ -13,6 +14,8 @@ st.set_page_config(
 try:
     from dotenv import load_dotenv
     import pandas as pd
+    # Import API server module
+    from api_server import run_server
     # Only import these after confirming the basic imports work
     from rag_pipeline import create_rag_pipeline_from_env
     from text_similarity import TextSimilarityCalculator
@@ -20,6 +23,10 @@ except ImportError as e:
     st.error(f"Error importing required dependencies: {str(e)}")
     st.info("Please check that all required packages are installed correctly.")
     st.stop()
+
+# Start the API server in a separate thread
+api_thread = threading.Thread(target=run_server, daemon=True)
+api_thread.start()
 
 # Load environment variables
 try:
@@ -47,27 +54,36 @@ pipeline, similarity_calculator = load_models()
 st.title("📚 JFK Documents RAG System")
 st.markdown("Ask questions about JFK assassination documents and get AI-powered answers with citations and similarity metrics.")
 
+# API Information Box
+st.info("""
+## API Server Running
+Your React frontend can now connect to this Streamlit app via the API endpoint.
+
+**Endpoint:** `https://cusfur3mwz8svmncsjjvvd.streamlit.app/api/query`  
+**Method:** POST  
+**Request Format:**
+```json
+{
+  "query": "Your question about JFK",
+  "with_citations": true,
+  "include_similarity": true
+}
+```
+""")
+
 # Sidebar for settings
 with st.sidebar:
     st.header("Settings")
-    # Check if we have URL parameters for these settings
-    query_params = st.query_params
-    url_show_citations = query_params.get("show_citations", ["true"])[0].lower() == "true" if "show_citations" in query_params else True
-    url_show_similarity = query_params.get("show_similarity", ["true"])[0].lower() == "true" if "show_similarity" in query_params else True
+    show_citations = st.checkbox("Include citations", value=True)
+    show_similarity = st.checkbox("Show similarity metrics", value=True)
     
-    show_citations = st.checkbox("Include citations", value=url_show_citations)
-    show_similarity = st.checkbox("Show similarity metrics", value=url_show_similarity)
+    st.header("API Information")
+    st.markdown("""
+    The API server is running on port 8000.
     
-    st.header("Frontend Integration")
-    st.markdown(f"""
-    This Streamlit app can be integrated with your React frontend.
-    Streamlit URL: https://cusfur3mwz8svmncsjjvvd.streamlit.app/
-    
-    **URL Parameters:**
-    - query: Your search query
-    - show_citations: true/false
-    - show_similarity: true/false
-    - submit: true to automatically run the search
+    Your React app can make POST requests to:
+    - `/api/query` - Process queries
+    - `/api/health` - Check server status
     """)
     
     st.header("About")
@@ -78,22 +94,13 @@ with st.sidebar:
     - JFK assassination document corpus
     """)
 
-# Check if we have a query parameter
-url_query = st.query_params.get("query", [""])[0] if "query" in st.query_params else ""
-url_submit = st.query_params.get("submit", ["false"])[0].lower() == "true" if "submit" in st.query_params else False
-
-# Main query input - use URL parameter if available
-query = st.text_input("Ask a question about JFK:", value=url_query, placeholder="e.g., What happened to JFK?")
+# Main query input
+query = st.text_input("Ask a question about JFK:", placeholder="e.g., What happened to JFK?")
 
 # Submit button
-submit = st.button("Search") or url_submit
+submit = st.button("Search")
 
 if submit and query:
-    # Check if pipeline is initialized
-    if not pipeline or not similarity_calculator:
-        st.error("The RAG pipeline is not properly initialized. Please check the configuration.")
-        st.stop()
-        
     # Show spinner while processing
     with st.spinner("Searching documents and generating response..."):
         try:
@@ -155,7 +162,7 @@ if submit and query:
                 
                 df = pd.DataFrame(doc_data)
                 
-                # Instead of plotly chart, use streamlit's native bar chart
+                # Use streamlit native bar chart instead of plotly
                 if show_similarity and all("similarity" in doc for doc in result["retrieved_docs"]):
                     st.subheader("Document Relevance to Query")
                     st.bar_chart(df.set_index("Title")["Similarity"])
@@ -179,35 +186,8 @@ if submit and query:
             
         except Exception as e:
             st.error(f"Error processing query: {str(e)}")
-            import traceback
-            st.code(traceback.format_exc())
 else:
     if submit:  # If the submit button was pressed but there's no query
         st.warning("Please enter a question to search.")
     else:  # First load of the page
         st.info("Enter a question above and click 'Search' to get started.")
-
-# Add JSON response endpoint for API-like functionality
-if 'format' in st.query_params and st.query_params['format'][0] == 'json' and query and submit:
-    import json
-    from streamlit.components.v1 import html
-    
-    # Create a simple JSON response
-    response_data = {
-        "query": query,
-        "response": result.get("response", ""),
-        "num_docs_retrieved": result.get("num_docs_retrieved", 0)
-    }
-    
-    if show_citations and "citations" in result:
-        response_data["citations"] = result["citations"]
-        
-    if show_similarity and "confidence" in result:
-        response_data["confidence"] = result["confidence"]
-    
-    # Display as JSON in a hidden div for scraping
-    html(f"""
-    <div id="api-response" style="display:none;">
-        {json.dumps(response_data)}
-    </div>
-    """)

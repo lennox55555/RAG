@@ -1,36 +1,30 @@
 import axios from 'axios';
 
-
-const STREAMLIT_URL = 'https://cusfur3mwz8svmncsjjvvd.streamlit.app/';
-
-const BASE_URL = 'https://lennoxanderson.com/mffrag';
+// This should point to your deployed Streamlit app's API endpoint
+const API_URL = 'https://cusfur3mwz8svmncsjjvvd.streamlit.app';
 
 export const fetchAnswer = async (query, withCitations = true, withSimilarity = false) => {
   try {
-   
-    const searchParams = new URLSearchParams({
+    const response = await axios.post(`${API_URL}/api/query`, {
       query: query,
-      show_citations: withCitations,
-      show_similarity: withSimilarity,
-      submit: true,
-      format: 'json' 
+      with_citations: withCitations,
+      include_similarity: withSimilarity
     });
     
-    const streamlitUrl = `${STREAMLIT_URL}?${searchParams.toString()}`;
-    
-
-    return {
-      response: `Your query has been sent to the RAG system. <a href="${streamlitUrl}" target="_blank" rel="noopener noreferrer">View Results in Streamlit App</a>`,
-      retrieved_docs: [],
-      num_docs_retrieved: 0,
-      confidence: {
-        level: 'Redirected',
-        score: 1.0,
-        explanation: 'Click the link above to see your results in the Streamlit application.'
-      }
-    };
+    return response.data;
   } catch (error) {
-    console.error('Error connecting to Streamlit:', error);
-    throw error;
+    console.error('Error connecting to RAG API:', error);
+    
+    // Return a meaningful error message to display to the user
+    if (error.response) {
+      // The request was made and the server responded with an error status
+      throw new Error(`Server error: ${error.response.data.detail || error.response.statusText}`);
+    } else if (error.request) {
+      // The request was made but no response was received
+      throw new Error('Could not reach the RAG server. Please check your connection or try again later.');
+    } else {
+      // Something happened in setting up the request
+      throw new Error(`Error: ${error.message}`);
+    }
   }
 };
