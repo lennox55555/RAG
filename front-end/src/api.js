@@ -1,17 +1,35 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000';
+// Point to your deployed Streamlit app URL
+const STREAMLIT_URL = 'https://cusfur3mwz8svmncsjjvvd.streamlit.app/';
 
 export const fetchAnswer = async (query, withCitations = true, withSimilarity = false) => {
   try {
-    const response = await axios.post(`${API_URL}/query`, {
-      query,
-      with_citations: withCitations,
-      include_similarity: withSimilarity
+    // Create URL with query parameters for Streamlit
+    const searchParams = new URLSearchParams({
+      query: query,
+      show_citations: withCitations,
+      show_similarity: withSimilarity,
+      submit: true,
+      format: 'json'  // Request JSON format if supported
     });
-    return response.data;
+    
+    const streamlitUrl = `${STREAMLIT_URL}?${searchParams.toString()}`;
+    
+    return {
+      response: `Your query has been sent to the RAG system. <a href="${streamlitUrl}" target="_blank" rel="noopener noreferrer">View Results in Streamlit App</a>`,
+      retrieved_docs: [],
+      num_docs_retrieved: 0,
+      confidence: {
+        level: 'Redirected',
+        score: 1.0,
+        explanation: 'Click the link above to see your results in the Streamlit application.'
+      }
+    };
+    
+
   } catch (error) {
-    console.error('Error fetching answer:', error);
+    console.error('Error connecting to Streamlit:', error);
     throw error;
   }
 };
