@@ -17,6 +17,9 @@ try:
     # Only import these after confirming the basic imports work
     from rag_pipeline import create_rag_pipeline_from_env
     from text_similarity import TextSimilarityCalculator
+    
+    # Import FastAPI server
+    from streamlit_api import app as api_app, api_thread  # This will start the API server
 except ImportError as e:
     st.error(f"Error importing required dependencies: {str(e)}")
     st.info("Please check that all required packages are installed correctly.")
@@ -51,8 +54,24 @@ st.markdown("Ask questions about JFK assassination documents and get AI-powered 
 # Sidebar for settings
 with st.sidebar:
     st.header("Settings")
-    show_citations = st.checkbox("Include citations", value=True)
-    show_similarity = st.checkbox("Show similarity metrics", value=True)
+    # Check if we have URL parameters for these settings
+    url_show_citations = st.experimental_get_query_params().get("show_citations", [True])[0]
+    url_show_similarity = st.experimental_get_query_params().get("show_similarity", [True])[0]
+    
+    # Convert string query parameters to boolean
+    if isinstance(url_show_citations, str):
+        url_show_citations = url_show_citations.lower() == "true"
+    if isinstance(url_show_similarity, str):
+        url_show_similarity = url_show_similarity.lower() == "true"
+    
+    show_citations = st.checkbox("Include citations", value=url_show_citations)
+    show_similarity = st.checkbox("Show similarity metrics", value=url_show_similarity)
+    
+    st.header("API Access")
+    st.markdown(f"""
+    This application exposes an API for integration with your front-end.
+    API endpoint: http://localhost:8000/query
+    """)
     
     st.header("About")
     st.markdown("""
@@ -62,11 +81,19 @@ with st.sidebar:
     - JFK assassination document corpus
     """)
 
-# Main query input
-query = st.text_input("Ask a question about JFK:", placeholder="e.g., What happened to JFK?")
+# Check if we have a query parameter
+url_query = st.experimental_get_query_params().get("query", [""])[0]
+url_submit = st.experimental_get_query_params().get("submit", [False])[0]
+
+# Convert string query parameter to boolean
+if isinstance(url_submit, str):
+    url_submit = url_submit.lower() == "true"
+
+# Main query input - use URL parameter if available
+query = st.text_input("Ask a question about JFK:", value=url_query, placeholder="e.g., What happened to JFK?")
 
 # Submit button
-submit = st.button("Search")
+submit = st.button("Search") or url_submit
 
 if submit and query:
     # Show spinner while processing
