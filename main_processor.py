@@ -29,13 +29,10 @@ def parse_args():
 
 def main():
     """Main function to run the entire pipeline."""
-    # Load environment variables from .env file if it exists
     load_dotenv()
     
-    # Get command line arguments
     args = parse_args()
     
-    # Get API keys from environment
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
         print("Warning: OPENAI_API_KEY environment variable not set")
@@ -50,20 +47,16 @@ def main():
         pinecone_index_name = "mff"
         print(f"Using default Pinecone index name: {pinecone_index_name}")
     
-    # Create output directory if it doesn't exist
     os.makedirs(os.path.dirname(args.embeddings_path), exist_ok=True)
     
-    # Step 1: Read data
     print("\n=== Step 1: Reading Data ===")
     reader = DataReader(args.data_path)
     
-    # Step 2: Extract text
     print("\n=== Step 2: Extracting Text ===")
     extractor = TextExtractor(reader)
     documents = extractor.extract_all_texts()
     print(f"Extracted {len(documents)} documents")
     
-    # Step 3: Chunk documents
     print("\n=== Step 3: Chunking Documents ===")
     chunker = TextChunker(
         chunk_size=args.chunk_size,
@@ -73,7 +66,6 @@ def main():
     chunks = chunker.chunk_documents(documents)
     print(f"Created {len(chunks)} chunks")
     
-    # Step 4: Create embeddings and upload to Pinecone
     print("\n=== Step 4: Creating Embeddings and Uploading to Pinecone ===")
     embedding_creator = EmbeddingCreator(
         pinecone_api_key=pinecone_api_key,
@@ -83,7 +75,6 @@ def main():
         batch_size=args.batch_size
     )
     
-    # Save embeddings if requested
     embeddings_path = args.embeddings_path if args.save_embeddings else None
     embedding_creator.process_and_upload(chunks, save_path=embeddings_path)
     

@@ -13,16 +13,12 @@ class DataReader:
         try:
             with open(self.data_path, 'r', encoding='utf-8') as file:
                 data = json.load(file)
-                print(f"Successfully loaded {len(data)} documents from {self.data_path}")
                 return data
         except FileNotFoundError:
-            print(f"Error: File {self.data_path} not found")
             return []
         except json.JSONDecodeError:
-            print(f"Error: File {self.data_path} is not valid JSON")
             return []
         except Exception as e:
-            print(f"Error reading data: {str(e)}")
             return []
     
     def get_document_by_id(self, doc_id: int) -> Dict[str, Any]:

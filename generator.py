@@ -14,7 +14,6 @@ class ResponseGenerator:
         """
         Initialize the ResponseGenerator.
         """
-        # Initialize OpenAI
         if openai_api_key:
             openai.api_key = openai_api_key
         
@@ -39,7 +38,6 @@ Question: {query}
 Answer:
 """
         try:
-            # Using the new OpenAI client
             response = openai.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -119,7 +117,7 @@ if __name__ == "__main__":
     
     generator = ResponseGenerator(
         openai_api_key=openai_api_key,
-        model="gpt-3.5-turbo"  # Use gpt-3.5-turbo for testing
+        model="gpt-3.5-turbo"  
     )
     
     query = "What happened to JFK?"

@@ -30,8 +30,7 @@ class TextChunker:
         # normalize the text
         text = self._normalize_text(text)
         
-        # Simple sentence splitting based on common ending punctuation
-        # This is less sophisticated than NLTK's sent_tokenize but doesn't require punkt_tab
+        
         simple_sentences = []
         for potential_sentence in re.split(r'(?<=[.!?])\s+', text):
             if potential_sentence:

@@ -1,14 +1,12 @@
 from pinecone import Pinecone
 
-# Initialize Pinecone
+# init 
 pc = Pinecone(api_key="pcsk_41GHre_JdhTRFid6dboFnFuBow2PxfVsV2iG2F38hTmqRfbizfjv3Znj2eXx3BvtUP6ywp")
 index = pc.Index("mff")
 
-# Create a vector of dimension 1536 (filled with small random values as an example)
-# In a real application, these would be actual embeddings from your text/data
+
 vector_1536 = [0.01] * 1536 
 
-# Create vectors with correct dimension
 vectors = [
     {
         "id": "vec1",

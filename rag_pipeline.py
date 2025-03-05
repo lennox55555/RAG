@@ -87,10 +87,8 @@ def create_rag_pipeline_from_env() -> RAGPipeline:
     Returns:
         RAG pipeline instance
     """
-    # Load environment variables
     load_dotenv()
     
-    # Get API keys from environment
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
         raise ValueError("OPENAI_API_KEY not found in environment variables")
@@ -98,7 +96,6 @@ def create_rag_pipeline_from_env() -> RAGPipeline:
     pinecone_api_key = os.getenv("PINECONE_API_KEY", "pcsk_41GHre_JdhTRFid6dboFnFuBow2PxfVsV2iG2F38hTmqRfbizfjv3Znj2eXx3BvtUP6ywp")
     pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "mff")
     
-    # Create the pipeline
     return RAGPipeline(
         pinecone_api_key=pinecone_api_key,
         pinecone_index_name=pinecone_index_name,
@@ -108,18 +105,13 @@ def create_rag_pipeline_from_env() -> RAGPipeline:
 
 
 if __name__ == "__main__":
-    # Example usage
     try:
-        # Create the pipeline
         pipeline = create_rag_pipeline_from_env()
         
-        # Test query
         query = "What happened to JFK?"
         
-        # Process query with citations
         result = pipeline.process_query(query, with_citations=True)
         
-        # Print results
         print(f"Query: {result['query']}")
         print(f"Retrieved {result['num_docs_retrieved']} documents")
         print(f"\nResponse:\n{result['response']}")
