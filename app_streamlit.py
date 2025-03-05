@@ -9,20 +9,66 @@ st.set_page_config(
     layout="wide"
 )
 
+# Initialize variables to avoid undefined errors
+show_citations = True
+show_similarity = True
+
 # Try importing dependencies and handle errors gracefully
+missing_packages = []
 try:
     from dotenv import load_dotenv
-    import pandas as pd
-    import plotly.express as px
-    # Only import these after confirming the basic imports work
-    from rag_pipeline import create_rag_pipeline_from_env
-    from text_similarity import TextSimilarityCalculator
-    
-    # Import FastAPI server
-    from streamlit_api import app as api_app, api_thread  # This will start the API server
 except ImportError as e:
-    st.error(f"Error importing required dependencies: {str(e)}")
-    st.info("Please check that all required packages are installed correctly.")
+    missing_packages.append("python-dotenv")
+
+try:
+    import pandas as pd
+except ImportError as e:
+    missing_packages.append("pandas")
+
+try:
+    import plotly.express as px
+except ImportError as e:
+    missing_packages.append("plotly")
+
+# Only import these after confirming the basic imports work
+if not missing_packages:
+    try:
+        from rag_pipeline import create_rag_pipeline_from_env
+        from text_similarity import TextSimilarityCalculator
+    except ImportError as e:
+        st.error(f"Error importing RAG components: {str(e)}")
+        st.info("Please check that the RAG pipeline modules are installed correctly.")
+        st.stop()
+
+# If any required packages are missing, show installation instructions
+if missing_packages:
+    st.error(f"Missing required packages: {', '.join(missing_packages)}")
+    st.info("Please install the missing packages using pip:")
+    st.code(f"pip install {' '.join(missing_packages)}")
+    
+    # Provide instructions for updating requirements.txt
+    st.markdown("### Fixing the Streamlit App")
+    st.markdown("""
+    It looks like some required packages are missing. To fix this issue:
+    
+    1. Make sure your `requirements.txt` file includes these packages:
+    ```
+    streamlit>=1.30.0
+    setuptools>=68.0.0
+    wheel>=0.40.0
+    numpy>=1.26.0
+    fastapi==0.103.1
+    uvicorn==0.23.2
+    python-dotenv==1.0.0
+    pinecone-client==2.2.2
+    openai==0.28.0
+    plotly==5.18.0
+    pandas>=2.1.0
+    ```
+    
+    2. Push the updated requirements.txt to your repository
+    3. Restart the Streamlit app
+    """)
     st.stop()
 
 # Load environment variables
@@ -55,22 +101,23 @@ st.markdown("Ask questions about JFK assassination documents and get AI-powered 
 with st.sidebar:
     st.header("Settings")
     # Check if we have URL parameters for these settings
-    url_show_citations = st.experimental_get_query_params().get("show_citations", [True])[0]
-    url_show_similarity = st.experimental_get_query_params().get("show_similarity", [True])[0]
-    
-    # Convert string query parameters to boolean
-    if isinstance(url_show_citations, str):
-        url_show_citations = url_show_citations.lower() == "true"
-    if isinstance(url_show_similarity, str):
-        url_show_similarity = url_show_similarity.lower() == "true"
+    query_params = st.query_params
+    url_show_citations = query_params.get("show_citations", ["true"])[0].lower() == "true" if "show_citations" in query_params else True
+    url_show_similarity = query_params.get("show_similarity", ["true"])[0].lower() == "true" if "show_similarity" in query_params else True
     
     show_citations = st.checkbox("Include citations", value=url_show_citations)
     show_similarity = st.checkbox("Show similarity metrics", value=url_show_similarity)
     
-    st.header("API Access")
+    st.header("Frontend Integration")
     st.markdown(f"""
-    This application exposes an API for integration with your front-end.
-    API endpoint: http://localhost:8000/query
+    This Streamlit app can be integrated with your React frontend.
+    Streamlit URL: https://cusfur3mwz8svmncsjjvvd.streamlit.app/
+    
+    **URL Parameters:**
+    - query: Your search query
+    - show_citations: true/false
+    - show_similarity: true/false
+    - submit: true to automatically run the search
     """)
     
     st.header("About")
@@ -82,12 +129,8 @@ with st.sidebar:
     """)
 
 # Check if we have a query parameter
-url_query = st.experimental_get_query_params().get("query", [""])[0]
-url_submit = st.experimental_get_query_params().get("submit", [False])[0]
-
-# Convert string query parameter to boolean
-if isinstance(url_submit, str):
-    url_submit = url_submit.lower() == "true"
+url_query = st.query_params.get("query", [""])[0] if "query" in st.query_params else ""
+url_submit = st.query_params.get("submit", ["false"])[0].lower() == "true" if "submit" in st.query_params else False
 
 # Main query input - use URL parameter if available
 query = st.text_input("Ask a question about JFK:", value=url_query, placeholder="e.g., What happened to JFK?")
@@ -96,6 +139,11 @@ query = st.text_input("Ask a question about JFK:", value=url_query, placeholder=
 submit = st.button("Search") or url_submit
 
 if submit and query:
+    # Check if pipeline is initialized
+    if not pipeline or not similarity_calculator:
+        st.error("The RAG pipeline is not properly initialized. Please check the configuration.")
+        st.stop()
+        
     # Show spinner while processing
     with st.spinner("Searching documents and generating response..."):
         try:
@@ -159,22 +207,27 @@ if submit and query:
                 
                 # Plot similarity scores if similarity data is available
                 if show_similarity and all("similarity" in doc for doc in result["retrieved_docs"]):
-                    fig = px.bar(
-                        df, 
-                        x="Title", 
-                        y="Similarity",
-                        color="Category",
-                        color_discrete_map={
-                            "Very High": "green",
-                            "High": "blue",
-                            "Moderate": "orange",
-                            "Low": "red",
-                            "Very Low": "darkred"
-                        },
-                        labels={"Similarity": "Match Score", "Title": "Document"},
-                        title="Document Relevance to Query"
-                    )
-                    st.plotly_chart(fig)
+                    try:
+                        fig = px.bar(
+                            df, 
+                            x="Title", 
+                            y="Similarity",
+                            color="Category",
+                            color_discrete_map={
+                                "Very High": "green",
+                                "High": "blue",
+                                "Moderate": "orange",
+                                "Low": "red",
+                                "Very Low": "darkred"
+                            },
+                            labels={"Similarity": "Match Score", "Title": "Document"},
+                            title="Document Relevance to Query"
+                        )
+                        st.plotly_chart(fig)
+                    except Exception as e:
+                        st.warning(f"Could not generate plotly chart: {str(e)}")
+                        # Fallback to a text representation
+                        st.write(df)
                 
                 # Display document content
                 for i, doc in enumerate(doc_data):
@@ -195,8 +248,35 @@ if submit and query:
             
         except Exception as e:
             st.error(f"Error processing query: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
 else:
     if submit:  # If the submit button was pressed but there's no query
         st.warning("Please enter a question to search.")
     else:  # First load of the page
         st.info("Enter a question above and click 'Search' to get started.")
+
+# Add JSON response endpoint for API-like functionality
+if 'format' in st.query_params and st.query_params['format'][0] == 'json' and query and submit:
+    import json
+    from streamlit.components.v1 import html
+    
+    # Create a simple JSON response
+    response_data = {
+        "query": query,
+        "response": result.get("response", ""),
+        "num_docs_retrieved": result.get("num_docs_retrieved", 0)
+    }
+    
+    if show_citations and "citations" in result:
+        response_data["citations"] = result["citations"]
+        
+    if show_similarity and "confidence" in result:
+        response_data["confidence"] = result["confidence"]
+    
+    # Display as JSON in a hidden div for scraping
+    html(f"""
+    <div id="api-response" style="display:none;">
+        {json.dumps(response_data)}
+    </div>
+    """)
