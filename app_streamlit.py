@@ -9,66 +9,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize variables to avoid undefined errors
-show_citations = True
-show_similarity = True
-
 # Try importing dependencies and handle errors gracefully
-missing_packages = []
 try:
     from dotenv import load_dotenv
-except ImportError as e:
-    missing_packages.append("python-dotenv")
-
-try:
     import pandas as pd
+    # Only import these after confirming the basic imports work
+    from rag_pipeline import create_rag_pipeline_from_env
+    from text_similarity import TextSimilarityCalculator
 except ImportError as e:
-    missing_packages.append("pandas")
-
-try:
-    import plotly.express as px
-except ImportError as e:
-    missing_packages.append("plotly")
-
-# Only import these after confirming the basic imports work
-if not missing_packages:
-    try:
-        from rag_pipeline import create_rag_pipeline_from_env
-        from text_similarity import TextSimilarityCalculator
-    except ImportError as e:
-        st.error(f"Error importing RAG components: {str(e)}")
-        st.info("Please check that the RAG pipeline modules are installed correctly.")
-        st.stop()
-
-# If any required packages are missing, show installation instructions
-if missing_packages:
-    st.error(f"Missing required packages: {', '.join(missing_packages)}")
-    st.info("Please install the missing packages using pip:")
-    st.code(f"pip install {' '.join(missing_packages)}")
-    
-    # Provide instructions for updating requirements.txt
-    st.markdown("### Fixing the Streamlit App")
-    st.markdown("""
-    It looks like some required packages are missing. To fix this issue:
-    
-    1. Make sure your `requirements.txt` file includes these packages:
-    ```
-    streamlit>=1.30.0
-    setuptools>=68.0.0
-    wheel>=0.40.0
-    numpy>=1.26.0
-    fastapi==0.103.1
-    uvicorn==0.23.2
-    python-dotenv==1.0.0
-    pinecone-client==2.2.2
-    openai==0.28.0
-    plotly==5.18.0
-    pandas>=2.1.0
-    ```
-    
-    2. Push the updated requirements.txt to your repository
-    3. Restart the Streamlit app
-    """)
+    st.error(f"Error importing required dependencies: {str(e)}")
+    st.info("Please check that all required packages are installed correctly.")
     st.stop()
 
 # Load environment variables
@@ -205,29 +155,10 @@ if submit and query:
                 
                 df = pd.DataFrame(doc_data)
                 
-                # Plot similarity scores if similarity data is available
+                # Instead of plotly chart, use streamlit's native bar chart
                 if show_similarity and all("similarity" in doc for doc in result["retrieved_docs"]):
-                    try:
-                        fig = px.bar(
-                            df, 
-                            x="Title", 
-                            y="Similarity",
-                            color="Category",
-                            color_discrete_map={
-                                "Very High": "green",
-                                "High": "blue",
-                                "Moderate": "orange",
-                                "Low": "red",
-                                "Very Low": "darkred"
-                            },
-                            labels={"Similarity": "Match Score", "Title": "Document"},
-                            title="Document Relevance to Query"
-                        )
-                        st.plotly_chart(fig)
-                    except Exception as e:
-                        st.warning(f"Could not generate plotly chart: {str(e)}")
-                        # Fallback to a text representation
-                        st.write(df)
+                    st.subheader("Document Relevance to Query")
+                    st.bar_chart(df.set_index("Title")["Similarity"])
                 
                 # Display document content
                 for i, doc in enumerate(doc_data):
