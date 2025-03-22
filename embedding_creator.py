@@ -1,3 +1,4 @@
+# import required modules
 import os
 import time
 from typing import List, Dict, Any, Optional
@@ -8,66 +9,50 @@ from tqdm import tqdm
 import openai
 from pinecone import Pinecone
 
+# define embedding creator class
 class EmbeddingCreator:
-    """
-    Class for creating embeddings and uploading to Pinecone.
-    """
     def __init__(self, 
                  pinecone_api_key: str,
                  pinecone_index_name: str,
                  pinecone_namespace: str = "documents",
                  openai_api_key: Optional[str] = None,
                  embedding_model: str = "text-embedding-ada-002",
-                 batch_size: int = 100,
+                 batch_size: int = 32,
                  max_retries: int = 3,
                  retry_delay: int = 5):
-        
-        # pine cone
+        # initialize pinecone
         self.pc = Pinecone(api_key=pinecone_api_key)
         self.index = self.pc.Index(pinecone_index_name)
         self.namespace = pinecone_namespace
         
-        # init open ai
+        # set openai key
         if openai_api_key:
             openai.api_key = openai_api_key
         
+        # set config parameters
         self.embedding_model = embedding_model
         self.batch_size = batch_size
         self.max_retries = max_retries
         self.retry_delay = retry_delay
     
-    def _get_embedding(self, text: str) -> List[float]:
+    # get embeddings for a batch
+    def _get_embeddings_batch(self, texts: List[str]) -> List[Optional[List[float]]]:
         for attempt in range(self.max_retries):
             try:
-                response = openai.embeddings.create(
-                    model=self.embedding_model,
-                    input=text
-                )
-                return response.data[0].embedding
-            except Exception as e:
-                if attempt < self.max_retries - 1:
-                    print(f"Error getting embedding, retrying in {self.retry_delay} seconds: {str(e)}")
-                    time.sleep(self.retry_delay)
-                else:
-                    print(f"Failed to get embedding after {self.max_retries} attempts: {str(e)}")
-                    return [0.0] * 1536
-        
-    def _get_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
-        for attempt in range(self.max_retries):
-            try:
-                response = openai.embeddings.create(
+                response = openai.Embedding.create(
                     model=self.embedding_model,
                     input=texts
                 )
-                return [d.embedding for d in response.data]
+                return [data["embedding"] for data in response["data"]]
             except Exception as e:
                 if attempt < self.max_retries - 1:
                     print(f"Error getting batch embeddings, retrying in {self.retry_delay} seconds: {str(e)}")
                     time.sleep(self.retry_delay)
                 else:
                     print(f"Failed to get batch embeddings after {self.max_retries} attempts: {str(e)}")
-                    return [[0.0] * 1536 for _ in range(len(texts))]
+                    return [None for _ in range(len(texts))]
     
+    # create embeddings from chunks
     def create_embeddings(self, chunks: List[Dict[str, Any]], save_path: Optional[str] = None) -> List[Dict[str, Any]]:
         embedded_chunks = []
         
@@ -78,13 +63,17 @@ class EmbeddingCreator:
             batch_embeddings = self._get_embeddings_batch(batch_texts)
             
             for j, embedding in enumerate(batch_embeddings):
-                batch[j]["embedding"] = embedding
-                embedded_chunks.append(batch[j])
+                if embedding is not None:
+                    batch[j]["embedding"] = embedding
+                    embedded_chunks.append(batch[j])
+                else:
+                    print(f"Skipped chunk {batch[j]['doc_title']} (chunk_id: {batch[j]['chunk_id']}) due to embedding failure")
             
             time.sleep(0.5)
         
         print(f"Created embeddings for {len(embedded_chunks)} chunks")
         
+        # optionally save embeddings
         if save_path:
             serializable_chunks = []
             for chunk in embedded_chunks:
@@ -99,6 +88,7 @@ class EmbeddingCreator:
         
         return embedded_chunks
     
+    # upload embeddings to pinecone
     def upload_to_pinecone(self, embedded_chunks: List[Dict[str, Any]]) -> None:
         total_uploaded = 0
         
@@ -135,34 +125,43 @@ class EmbeddingCreator:
         
         print(f"Successfully uploaded {total_uploaded} vectors to Pinecone")
     
+    # full process and upload pipeline
     def process_and_upload(self, chunks: List[Dict[str, Any]], save_path: Optional[str] = None) -> None:
         embedded_chunks = self.create_embeddings(chunks, save_path)
         self.upload_to_pinecone(embedded_chunks)
 
-
+# main execution block
 if __name__ == "__main__":
+    # import helper modules
     from data_reader import DataReader
     from text_extractor import TextExtractor
     from text_chunker import TextChunker
     
+    # get openai key from environment
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
-        print("Warning: OPENAI_API_KEY environment variable not set")
+        print("Error: OPENAI_API_KEY environment variable not set")
+        exit(1)
     
-    pinecone_api_key = "your-default-pinecone-key"
+    # set pinecone config values
+    pinecone_api_key = "pcsk_41GHre_JdhTRFid6dboFnFuBow2PxfVsV2iG2F38hTmqRfbizfjv3Znj2eXx3BvtUP6ywp"
     pinecone_index_name = "mff"
     
+    # read and extract documents
     reader = DataReader("data/EssaySampleText.json")
     extractor = TextExtractor(reader)
     documents = extractor.extract_all_texts()
     
-    chunker = TextChunker(chunk_size=1000, chunk_overlap=200)
+    # chunk text data
+    chunker = TextChunker(max_tokens=7500, chunk_overlap=200)
     chunks = chunker.chunk_documents(documents)
     
+    # create and run embedding creator
     embedding_creator = EmbeddingCreator(
         pinecone_api_key=pinecone_api_key,
         pinecone_index_name=pinecone_index_name,
-        openai_api_key=openai_api_key
+        openai_api_key=openai_api_key,
+        batch_size=32
     )
     
     embedding_creator.process_and_upload(chunks, save_path="data/embeddings.json")

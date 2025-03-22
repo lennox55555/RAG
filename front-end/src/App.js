@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Book, Loader, ArrowRight, FileText, BarChart2 } from 'lucide-react';
-import { fetchAnswer } from './api';
+import { sendQuery } from './api';
 
 function App() {
   const [query, setQuery] = useState('');
@@ -18,7 +18,7 @@ function App() {
     setError(null);
     
     try {
-      const data = await fetchAnswer(query.trim(), showCitations, showSimilarity);
+      const data = await sendQuery(query.trim(), showCitations, showSimilarity);
       setResponse(data);
       console.log("API Response:", data); // Debug logging
     } catch (err) {

@@ -21,7 +21,7 @@ vectors = [
 ]
 
 try:
-    # Upsert to index
+    # upsert to index
     index.upsert(
         vectors=vectors,
         namespace="ns1"

@@ -4,7 +4,7 @@ import openai
 
 class ResponseGenerator:
     """
-    Class for generating responses based on retrieved documents using OpenAI's GPT models.
+    Class for generating responses based on retrieved context.
     """
     def __init__(self, 
                  openai_api_key: Optional[str] = None,
@@ -13,6 +13,12 @@ class ResponseGenerator:
                  max_tokens: int = 500):
         """
         Initialize the ResponseGenerator.
+        
+        Args:
+            openai_api_key: OpenAI API key
+            model: LLM model to use
+            temperature: Temperature for generation
+            max_tokens: Maximum tokens for generation
         """
         if openai_api_key:
             openai.api_key = openai_api_key
@@ -24,7 +30,18 @@ class ResponseGenerator:
     def generate_response(self, query: str, context: str) -> str:
         """
         Generate a response based on the query and context.
+        
+        Args:
+            query: Query text
+            context: Context information
+            
+        Returns:
+            Generated response
         """
+        # Check if the context indicates no relevant information
+        if "No relevant information found" in context:
+            return "I don't have specific information about that in my knowledge base. Please ask about a topic covered in the documents I have access to."
+        
         prompt = f"""
 You are a helpful assistant that answers questions based on the provided context.
 Your answers should be informative, accurate, and based exclusively on the information in the context.
@@ -58,10 +75,30 @@ Answer:
     def generate_response_with_citations(self, query: str, context: str, results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Generate a response with citations based on the query and context.
+        
+        Args:
+            query: Query text
+            context: Context information
+            results: Retrieved document results
+            
+        Returns:
+            Dictionary with response and citations
         """
+        # Check if we have relevant results
+        if not results or "No relevant information found" in context:
+            return {
+                "response": "I don't have specific information about that in my knowledge base. Please ask about a topic covered in the documents I have access to.",
+                "citations": {}
+            }
+        
+        # Create citation sources
         sources = {}
         for i, doc in enumerate(results):
-            sources[i+1] = {"title": doc["doc_title"], "source": doc["source"]}
+            sources[i+1] = {
+                "title": doc["doc_title"], 
+                "source": doc["source"],
+                "similarity": doc.get("similarity_score", 0)
+            }
         
         prompt = f"""
 You are a helpful assistant that answers questions based on the provided context.
@@ -70,6 +107,7 @@ If the context doesn't contain relevant information to answer the question, say 
 
 When you use information from a specific document, cite the source using the document number in square brackets like this: [X].
 Include multiple citations if information comes from multiple documents.
+If none of the documents contain relevant information to answer the question, clearly state that you don't have enough information.
 
 Context:
 {context}
@@ -79,7 +117,7 @@ Question: {query}
 Answer (with citations):
 """
         try:
-            # Using the new OpenAI client
+            # Using the OpenAI client
             response = openai.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -112,7 +150,8 @@ if __name__ == "__main__":
     retriever = DocumentRetriever(
         pinecone_api_key=pinecone_api_key,
         pinecone_index_name=pinecone_index_name,
-        openai_api_key=openai_api_key
+        openai_api_key=openai_api_key,
+        similarity_threshold=0.6  # Add threshold
     )
     
     generator = ResponseGenerator(
