@@ -1,115 +1,211 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb;
+/* Mary Ferrell Foundation RAG System Theme */
+
+/* Base Styles */
+:root {
+  --mff-red: #9e1b32;
+  --mff-dark-red: #7a1626;
+  --mff-light-gray: #f5f5f5;
+  --mff-gray: #e0e0e0;
+  --mff-dark-gray: #666666;
+  --mff-text: #333333;
+  --mff-separator: #ccc;
+  --mff-highlight: #f0f0f0;
 }
 
-.container {
+body {
+  margin: 0;
+  font-family: "Times New Roman", Times, serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: white;
+  color: var(--mff-text);
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Layout Components */
+.mff-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.mff-container {
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
 }
 
-header {
-  background-color: #3b82f6;
-  color: white;
+/* Header */
+.mff-header {
+  background-color: white;
   padding: 1rem 0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--mff-gray);
 }
 
-.header-content {
+.mff-logo {
   display: flex;
   align-items: center;
 }
 
-.header-title {
+.mff-logo-image {
+  width: 60px;
+  height: 60px;
+  margin-right: 1rem;
+}
+
+.mff-title-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.mff-title {
   font-size: 1.5rem;
   font-weight: bold;
-  margin-left: 0.5rem;
+  margin: 0;
+  color: var(--mff-red);
+  letter-spacing: 1px;
 }
 
-.search-container {
-  position: relative;
-  margin: 2rem 0;
+.mff-subtitle {
+  font-size: 1rem;
+  font-weight: normal;
+  font-style: italic;
+  margin: 0;
+  color: var(--mff-dark-gray);
 }
 
-.search-input {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+/* Navigation */
+.mff-nav {
+  background-color: var(--mff-red);
+  color: white;
 }
 
-.search-icon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
+.mff-nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
 }
 
-.search-button {
-  position: absolute;
-  right: 0.625rem;
-  bottom: 0.625rem;
-  background-color: #3b82f6;
+.mff-nav-item {
+  padding: 0.75rem 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+.mff-nav-item:hover {
+  background-color: var(--mff-dark-red);
+}
+
+.mff-nav-active {
+  background-color: var(--mff-dark-red);
+}
+
+/* Main Content */
+.mff-main {
+  flex: 1;
+  padding: 2rem 0;
+}
+
+.mff-page-title {
+  margin-bottom: 2rem;
+}
+
+.mff-page-title h2 {
+  font-size: 1.75rem;
+  color: var(--mff-red);
+  margin: 0 0 0.5rem 0;
+}
+
+.mff-page-title p {
+  font-size: 1rem;
+  color: var(--mff-dark-gray);
+  margin: 0;
+}
+
+/* Search Section */
+.mff-search-section {
+  margin-bottom: 3rem;
+}
+
+.mff-search-form {
+  margin-bottom: 2rem;
+}
+
+.mff-search-container {
+  display: flex;
+  margin-bottom: 0.75rem;
+}
+
+.mff-search-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid var(--mff-gray);
+  font-family: "Times New Roman", Times, serif;
+  font-size: 1rem;
+}
+
+.mff-search-button {
+  background-color: var(--mff-red);
   color: white;
   border: none;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
+  padding: 0 1.5rem;
+  font-weight: bold;
   cursor: pointer;
+  font-family: "Times New Roman", Times, serif;
 }
 
-.search-button:hover {
-  background-color: #2563eb;
+.mff-search-button:hover {
+  background-color: var(--mff-dark-red);
 }
 
-.search-button:disabled {
-  background-color: #93c5fd;
+.mff-search-button:disabled {
+  background-color: var(--mff-dark-gray);
   cursor: not-allowed;
 }
 
-.checkbox-container {
+.mff-checkbox-container {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.mff-checkbox-group {
   display: flex;
   align-items: center;
-  margin-top: 0.5rem;
 }
 
-.checkbox-input {
-  height: 1rem;
-  width: 1rem;
+.mff-checkbox {
+  margin-right: 0.5rem;
 }
 
-.checkbox-label {
-  margin-left: 0.5rem;
-  font-size: 0.875rem;
-  color: #4b5563;
+.mff-checkbox-label {
+  font-size: 0.9rem;
+  color: var(--mff-dark-gray);
 }
 
-.loader {
+/* Loader */
+.mff-loader {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  align-items: center;
   padding: 3rem 0;
 }
 
-.loader-icon {
-  animation: spin 1s linear infinite;
-  color: #3b82f6;
-  width: 2rem;
-  height: 2rem;
+.mff-spinner {
+  animation: mff-spin 1s linear infinite;
+  color: var(--mff-red);
+  margin-bottom: 1rem;
 }
 
-@keyframes spin {
+@keyframes mff-spin {
   from {
     transform: rotate(0deg);
   }
@@ -118,117 +214,244 @@ header {
   }
 }
 
-.loader-text {
-  margin-left: 0.5rem;
-  color: #4b5563;
+.mff-loader-text {
+  color: var(--mff-dark-gray);
 }
 
-.response-container {
-  background-color: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  padding: 1.5rem;
-  margin-top: 1.5rem;
-}
-
-.response-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 0.5rem;
-}
-
-.response-text {
-  color: #4b5563;
-}
-
-.citations {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.citations-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #4b5563;
-  margin-bottom: 0.5rem;
-}
-
-.citation-list {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
-
-.citation-item {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 0.25rem;
-}
-
-.citation-number {
-  font-weight: 500;
-  color: #4b5563;
-  margin-right: 0.5rem;
-}
-
-.citation-text {
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.citation-title {
-  font-weight: bold;
-}
-
-.metadata {
-  margin-top: 1rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-}
-
-.metadata-icon {
-  margin-right: 0.25rem;
-}
-
-.error-message {
+/* Error */
+.mff-error {
   background-color: #fee2e2;
   border-left: 4px solid #ef4444;
   padding: 1rem;
   margin-bottom: 1rem;
 }
 
-.error-text {
-  font-size: 0.875rem;
+.mff-error-text {
+  font-size: 0.9rem;
   color: #b91c1c;
+  margin: 0;
 }
 
-.main-content {
-  min-height: calc(100vh - 160px);
+/* Response */
+.mff-response {
+  background-color: var(--mff-light-gray);
+  padding: 1.5rem;
+  border: 1px solid var(--mff-gray);
 }
 
-footer {
-  background-color: #f3f4f6;
-  border-top: 1px solid #e5e7eb;
-  margin-top: 3rem;
-  padding: 1.5rem 0;
+.mff-response-title {
+  font-size: 1.25rem;
+  color: var(--mff-red);
+  margin: 0 0 1rem 0;
+  border-bottom: 1px solid var(--mff-separator);
+  padding-bottom: 0.5rem;
 }
 
-.footer-text {
-  text-align: center;
-  font-size: 0.875rem;
-  color: #6b7280;
+.mff-response-content {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
 }
 
+.mff-section-title {
+  font-size: 1.1rem;
+  color: var(--mff-red);
+  margin: 1.5rem 0 0.5rem 0;
+  border-bottom: 1px solid var(--mff-separator);
+  padding-bottom: 0.25rem;
+}
+
+/* Confidence Section */
+.mff-confidence {
+  margin: 1.5rem 0;
+}
+
+.mff-confidence-level {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.mff-confidence-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.mff-confidence-score {
+  margin-left: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--mff-dark-gray);
+}
+
+.mff-confidence-explanation {
+  font-size: 0.9rem;
+  color: var(--mff-dark-gray);
+  margin: 0.5rem 0;
+}
+
+/* Sources Section */
+.mff-sources {
+  margin: 1.5rem 0;
+}
+
+.mff-sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mff-source-item {
+  background-color: white;
+  border: 1px solid var(--mff-gray);
+  padding: 1rem;
+}
+
+.mff-source-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.mff-source-title {
+  font-size: 1rem;
+  margin: 0;
+  font-weight: bold;
+}
+
+.mff-similarity {
+  display: flex;
+  align-items: center;
+}
+
+.mff-similarity-indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.mff-similarity-score {
+  font-size: 0.8rem;
+  color: var(--mff-dark-gray);
+}
+
+.mff-source-preview {
+  font-size: 0.9rem;
+  color: var(--mff-dark-gray);
+  margin: 0;
+}
+
+/* Citations */
+.mff-citations {
+  margin: 1.5rem 0;
+}
+
+.mff-citations-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.mff-citation-item {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.mff-citation-number {
+  font-weight: bold;
+  margin-right: 0.5rem;
+  min-width: 2rem;
+}
+
+.mff-citation-text {
+  font-size: 0.9rem;
+  color: var(--mff-dark-gray);
+}
+
+.mff-citation-title {
+  font-weight: bold;
+}
+
+/* Citations in text */
 .citation-ref {
-  color: #3b82f6;
+  color: var(--mff-red);
   cursor: pointer;
-  font-weight: 500;
+  font-weight: bold;
 }
 
 .citation-ref:hover {
   text-decoration: underline;
+}
+
+/* Metadata */
+.mff-metadata {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--mff-dark-gray);
+  margin-top: 1.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--mff-separator);
+}
+
+.mff-metadata-icon {
+  margin-right: 0.5rem;
+}
+
+/* Footer */
+.mff-footer {
+  background-color: var(--mff-light-gray);
+  border-top: 1px solid var(--mff-gray);
+  padding: 1.5rem 0;
+  margin-top: 2rem;
+}
+
+.mff-footer-text {
+  font-size: 0.9rem;
+  color: var(--mff-dark-gray);
+  text-align: center;
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .mff-title {
+    font-size: 1.2rem;
+  }
+  
+  .mff-subtitle {
+    font-size: 0.8rem;
+  }
+  
+  .mff-nav-item {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
+  .mff-search-container {
+    flex-direction: column;
+  }
+  
+  .mff-search-input {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .mff-search-button {
+    width: 100%;
+    padding: 0.5rem;
+  }
+  
+  .mff-checkbox-container {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .mff-response {
+    padding: 1rem;
+  }
 }

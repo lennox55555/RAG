@@ -20,7 +20,7 @@ def parse_essays_csv(file_path: str) -> List[Dict[str, Any]]:
             # Skip the header line
             header = next(f).strip().split(',')
             
-            line_num = 1  # Header was line 1
+            line_num = 1  
             for line in f:
                 line_num += 1
                 

@@ -98,7 +98,7 @@ class TextExtractor:
         
         for doc in documents:
             extracted = self.extract_document_text(doc)
-            if extracted["title"]:  # Only include if there's a title
+            if extracted["title"]:  
                 extracted_texts.append(extracted)
         
         print(f"Extracted text from {len(extracted_texts)} documents")
