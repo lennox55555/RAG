@@ -39,7 +39,7 @@ A Retrieval-Augmented Generation (RAG) application built for the Mary Ferrell Fo
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/mary-ferrell-foundation-rag.git
+git clone https://github.com/lennox55555/mary-ferrell-foundation-rag.git
 cd mary-ferrell-foundation-rag
 ```
 
@@ -189,6 +189,23 @@ The application has been consolidated into several key components:
 - `front-end/`: React frontend application
 
 ## Additional Information
+
+### Generating Document Summaries
+
+You can generate summaries for documents in your database using the `generate_summaries.py` script. This is useful for creating concise overviews of lengthy documents for quicker review.
+
+```bash
+# From the root directory, with virtual environment activated
+python generate_summaries.py --namespace documents --output summaries.json
+```
+
+Options:
+- `--namespace`: The Pinecone namespace to use (default: "documents")
+- `--output`: Output file path for the summaries (default: "summaries.json")
+- `--batch-size`: Number of documents to process in each batch (default: 10)
+- `--model`: OpenAI model to use for summarization (default: "gpt-3.5-turbo")
+
+Note: You will need to create an OpenAI developer account as mentioned in the [Set Up OpenAI Account](#set-up-openai-account) section above. The script uses the OpenAI API to generate summaries, which will consume API credits based on the number and length of documents processed.
 
 ### Development Mode
 
