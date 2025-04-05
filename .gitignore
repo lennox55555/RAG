@@ -1,6 +1,7 @@
 .DS_Store
-
-
+/backup
+/consolidated
+/data
 __pycache__/
 *.py[cod]
 *$py.class
@@ -69,6 +70,7 @@ build/
 .env.production.local
 logs/
 *.log
+out/
 dist/
 dist-*
 .ipynb_checkpoints
