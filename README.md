@@ -192,20 +192,28 @@ The application has been consolidated into several key components:
 
 ### Generating Document Summaries
 
-You can generate summaries for documents in your database using the `generate_summaries.py` script. This is useful for creating concise overviews of lengthy documents for quicker review.
+The application includes a script for generating summaries of documents. This is useful for creating concise overviews of lengthy essays or reports.
 
 ```bash
 # From the root directory, with virtual environment activated
-python generate_summaries.py --namespace documents --output summaries.json
+python generateSummaries.py
 ```
 
-Options:
-- `--namespace`: The Pinecone namespace to use (default: "documents")
-- `--output`: Output file path for the summaries (default: "summaries.json")
-- `--batch-size`: Number of documents to process in each batch (default: 10)
-- `--model`: OpenAI model to use for summarization (default: "gpt-3.5-turbo")
+**How it works:**
+1. The script reads documents from `EssaySampleText.json` by default
+2. For each document, it uses OpenAI's GPT-4o model to generate a concise summary
+3. Summaries are saved to the `summaries/` directory with filenames based on document titles
+4. Each summary file includes the original title and the generated summary
 
-Note: You will need to create an OpenAI developer account as mentioned in the [Set Up OpenAI Account](#set-up-openai-account) section above. The script uses the OpenAI API to generate summaries, which will consume API credits based on the number and length of documents processed.
+**Requirements:**
+- You need to create an OpenAI developer account as mentioned in the [Set Up OpenAI Account](#set-up-openai-account) section above
+- Your OpenAI API key must be set in your environment variables
+- The script uses the GPT-4o model, which will consume API credits based on the number and length of documents processed
+
+**Customization:**
+- To use a different input file, modify line 11 in the script
+- To change the output directory, modify line 14
+- To use a different OpenAI model, modify line 25
 
 ### Development Mode
 
