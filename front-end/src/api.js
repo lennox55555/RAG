@@ -72,6 +72,40 @@ export async function updateSimilarityThreshold(threshold) {
 }
 
 /**
+ * Upload a file to the RAG system
+ * @param {File} file - The file to upload
+ * @param {Object} options - Upload options
+ * @param {number} options.chunkSize - The chunk size for document splitting
+ * @param {number} options.chunkOverlap - The overlap between chunks
+ * @param {boolean} options.clearIndex - Whether to clear the index before upload
+ * @returns {Promise<Object>} - The upload response
+ */
+export async function uploadFile(file, options = {}) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('chunk_size', options.chunkSize || 1000);
+    formData.append('chunk_overlap', options.chunkOverlap || 100);
+    formData.append('clear_index', options.clearIndex || false);
+
+    const response = await fetch(`${API_BASE_URL}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    throw error;
+  }
+}
+
+/**
  * Check API health
  * @returns {Promise<Object>} - Health check response
  */

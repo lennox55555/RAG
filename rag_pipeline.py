@@ -1,49 +1,53 @@
-# Import libraries
 import os
 from dotenv import load_dotenv
 import openai
 import requests
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Tuple
 import logging
 import json
 import time
+import numpy as np
+from scipy.spatial.distance import cosine
 
-# Load environment variables
+# load env vars
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# setup logging
+from logger_config import setup_logger
+logger = setup_logger("rag_pipeline")
 
-# Initialize OpenAI client
+# init openai
 openai.api_key = os.getenv("OPENAI_API_KEY")
 if not openai.api_key:
     raise ValueError("OPENAI_API_KEY not set in environment")
 
-# Pinecone configuration variables
+# pinecone config
 pinecone_api_key = os.getenv("PINECONE_API_KEY", "your_actual_api_key")
 pinecone_index_name = os.getenv("PINECONE_INDEX_NAME", "mff")
 pinecone_namespace = os.getenv("PINECONE_NAMESPACE", "documents")
-pinecone_host = "https://mff-foxube2.svc.aped-4627-b74a.pinecone.io"  # Use your actual host URL
+pinecone_host = "https://mff-foxube2.svc.aped-4627-b74a.pinecone.io"
 
 class RAGPipeline:
     def __init__(self):
-        """Initialize RAG pipeline."""
         logger.info("RAGPipeline initialized.")
         self.host = pinecone_host
         self.api_key = pinecone_api_key
         self.namespace = pinecone_namespace
-        self.similarity_threshold = 0.6  # Add a default threshold
+        self.similarity_threshold = 0.6
         self.headers = {
             "Api-Key": self.api_key,
             "Content-Type": "application/json"
         }
+        self.embedding_model = "text-embedding-3-small"
+        self.generation_model = "gpt-3.5-turbo"
+        self.max_tokens = 500
+        self.temperature = 0.7
 
     def embed_query(self, query: str) -> List[float]:
-        """Generate embedding for the query using OpenAI."""
+        # generate query embedding
         try:
             response = openai.Embedding.create(
-                model="text-embedding-3-small",  # Using latest available model
+                model=self.embedding_model,
                 input=query
             )
             return response["data"][0]["embedding"]
@@ -52,7 +56,7 @@ class RAGPipeline:
             raise
 
     def retrieve_documents(self, query_embedding: List[float], top_k: int = 5) -> List[Dict]:
-        """Retrieve relevant documents from Pinecone using direct API call."""
+        # get relevant docs from pinecone
         try:
             url = f"{self.host}/query"
             payload = {
@@ -71,29 +75,63 @@ class RAGPipeline:
             logger.error(f"Error retrieving documents from Pinecone: {str(e)}")
             return []
 
-    def generate_response(self, query: str, documents: List[str]) -> str:
-        """Generate a response using OpenAI based on retrieved documents."""
+    def _filter_documents_by_similarity(self, matches: List[Dict]) -> List[Dict]:
+        # filter by similarity threshold
+        filtered = []
+        for match in matches:
+            similarity_score = match.get("score", 0)
+            # keep docs above threshold or at least one doc
+            if similarity_score >= self.similarity_threshold or not filtered:
+                filtered.append(match)
+        return filtered
+
+    def _format_context(self, documents: List[Dict]) -> str:
+        # format docs for context
+        if not documents:
+            return "No relevant information found in the knowledge base."
+        
+        context_parts = []
+        
+        for i, doc in enumerate(documents, 1):
+            # extract text from metadata
+            doc_text = doc["metadata"].get("text", "")
+            doc_title = doc["metadata"].get("doc_title", "Unknown")
+            doc_source = doc["metadata"].get("source", "")
+            
+            # truncate long texts
+            if len(doc_text) > 750:
+                doc_text = doc_text[:750] + "..."
+                
+            context_parts.append(f"Document {i}:\nTitle: {doc_title}\nSource: {doc_source}\nContent: {doc_text}\n")
+        
+        return "\n".join(context_parts)
+
+    def generate_response(self, query: str, documents: List[Dict]) -> str:
+        # generate response using llm
         try:
-            # Truncate each document to avoid context overflow (e.g., 1000 characters per doc)
-            truncated_docs = [doc[:750] for doc in documents]
-            combined_docs = "\n\n---\n\n".join(truncated_docs)
+            # format context
+            context = self._format_context(documents)
+            
+            # exit if no relevant docs
+            if context.startswith("No relevant information"):
+                return "I don't have specific information about that in my knowledge base. Please ask about a topic covered in the documents I have access to."
             
             prompt = f"""You are a helpful research assistant for the Mary Ferrell Foundation, which focuses on historical documents related to the JFK assassination, civil rights, and other significant historical events.
 
 Query: {query}
 
 Context from documents:
-{combined_docs}
+{context}
 
 Based only on the provided context, please give a comprehensive and accurate answer to the query. 
 If the context doesn't contain relevant information, acknowledge this limitation.
 Format your response in a scholarly tone appropriate for historical research. Cite your sources using numbers in square brackets [1] where appropriate."""
 
             response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model=self.generation_model,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=500,
-                temperature=0.7
+                max_tokens=self.max_tokens,
+                temperature=self.temperature
             )
             return response["choices"][0]["message"]["content"].strip()
         except Exception as e:
@@ -101,35 +139,30 @@ Format your response in a scholarly tone appropriate for historical research. Ci
             return "I apologize, but I encountered an error while generating a response. Please try again."
 
     def process_query(self, query: str, with_citations: bool = False) -> Dict[str, Any]:
-        """Process the query and return a response with optional citations."""
+        # main query processing pipeline
         try:
-            # Step 1: Generate query embedding
+            # get query embedding
             query_embedding = self.embed_query(query)
 
-            # Step 2: Retrieve documents
+            # retrieve docs
             matches = self.retrieve_documents(query_embedding)
             num_docs = len(matches)
 
-            # Step 3: Prepare citations and document texts
+            # prepare citations and docs
             citations = {}
-            documents_text = []
             retrieved_docs = []
             
             if matches:
-                for i, match in enumerate(matches):
+                filtered_matches = self._filter_documents_by_similarity(matches)
+                
+                for i, match in enumerate(filtered_matches):
                     similarity_score = match.get("score", 0)
                     
-                    # Skip if below threshold (unless we have no results)
-                    if similarity_score < self.similarity_threshold and i > 0:
-                        continue
-                        
                     doc_text = match["metadata"].get("text", "")
                     doc_title = match["metadata"].get("doc_title", "Unknown")
                     doc_source = match["metadata"].get("source", "")
                     
-                    documents_text.append(doc_text)
-                    
-                    # Add to retrieved docs for frontend
+                    # add to retrieved docs for frontend
                     retrieved_docs.append({
                         "doc_title": doc_title,
                         "source": doc_source,
@@ -145,16 +178,15 @@ Format your response in a scholarly tone appropriate for historical research. Ci
                             "similarity": similarity_score
                         }
 
-            # Step 4: Generate a response using the retrieved documents
-            if documents_text:
-                response = self.generate_response(query, documents_text)
-                # Add confidence level explanation
+            # generate response
+            if retrieved_docs:
+                response = self.generate_response(query, filtered_matches)
                 confidence_level = self._get_confidence_level(matches[0]["score"] if matches else 0)
             else:
                 response = "I don't have specific information about that in my knowledge base. Please ask about a topic covered in the documents I have access to."
                 confidence_level = {"score": 0.0, "is_relevant": False, "level": "Very Low", "explanation": "No relevant documents found."}
 
-            # Build the result
+            # build result
             result = {
                 "query": query,
                 "response": response,
@@ -177,7 +209,7 @@ Format your response in a scholarly tone appropriate for historical research. Ci
             }
             
     def _get_similarity_category(self, score: float) -> str:
-        """Convert similarity score to a category."""
+        # convert score to category
         if score >= 0.9:
             return "Very High"
         elif score >= 0.8:
@@ -190,7 +222,7 @@ Format your response in a scholarly tone appropriate for historical research. Ci
             return "Very Low"
             
     def _get_confidence_level(self, score: float) -> Dict[str, Any]:
-        """Convert similarity score to confidence information."""
+        # get confidence info from score
         category = self._get_similarity_category(score)
         explanations = {
             "Very High": "The response is based on documents with very high relevance to your query.",
@@ -208,8 +240,7 @@ Format your response in a scholarly tone appropriate for historical research. Ci
         }
 
 def create_rag_pipeline_from_env() -> RAGPipeline:
-    """Create and return a RAGPipeline instance."""
-    # Check if similarity threshold is in environment
+    # create pipeline from env vars
     threshold = os.getenv("SIMILARITY_THRESHOLD")
     pipeline = RAGPipeline()
     if threshold:
@@ -220,7 +251,7 @@ def create_rag_pipeline_from_env() -> RAGPipeline:
     return pipeline
 
 if __name__ == "__main__":
-    # For testing purposes
+    # test
     pipeline = create_rag_pipeline_from_env()
     result = pipeline.process_query("Who is JFK and how did he die?")
     print(json.dumps(result, indent=2))

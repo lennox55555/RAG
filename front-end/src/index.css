@@ -253,6 +253,12 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.mff-response-content {
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
 .mff-section-title {
   font-size: 1.1rem;
   color: var(--mff-red);
@@ -417,6 +423,43 @@ body {
   margin: 0;
 }
 
+/* Tabs */
+.mff-tabs {
+  display: flex;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--mff-separator);
+}
+
+.mff-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--mff-dark-gray);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mff-tab:hover {
+  color: var(--mff-red);
+  background-color: var(--mff-light-gray);
+}
+
+.mff-tab-active {
+  color: var(--mff-red);
+  border-bottom-color: var(--mff-red);
+  font-weight: 600;
+}
+
+.mff-tab-icon {
+  flex-shrink: 0;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .mff-title {
@@ -453,5 +496,19 @@ body {
   
   .mff-response {
     padding: 1rem;
+  }
+  
+  .mff-tabs {
+    flex-direction: column;
+  }
+  
+  .mff-tab {
+    border-bottom: none;
+    border-left: 3px solid transparent;
+  }
+  
+  .mff-tab-active {
+    border-left-color: var(--mff-red);
+    background-color: var(--mff-light-gray);
   }
 }

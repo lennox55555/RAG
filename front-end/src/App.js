@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Search, Book, Loader, ArrowRight, FileText, BarChart2 } from 'lucide-react';
+import { Search, Book, Loader, ArrowRight, FileText, BarChart2, Upload } from 'lucide-react';
 import { sendQuery } from './api';
+import FileUpload from './FileUpload';
+import './FileUpload.css';
 
 function App() {
   const [query, setQuery] = useState('');
@@ -9,6 +11,7 @@ function App() {
   const [error, setError] = useState(null);
   const [showCitations, setShowCitations] = useState(true);
   const [showSimilarity, setShowSimilarity] = useState(true);
+  const [activeTab, setActiveTab] = useState('search'); // 'search' or 'upload'
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,157 +82,161 @@ function App() {
       <main className="mff-container mff-main">
         <div className="mff-page-title">
           <h2>MFF Research Assistant</h2>
-          <p>Ask questions about documents in the Mary Ferrell Foundation archive</p>
+          <p>Search and manage documents in the Mary Ferrell Foundation archive</p>
         </div>
 
-        <div className="mff-search-section">
-          <form onSubmit={handleSubmit} className="mff-search-form">
-            <div className="mff-search-container">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="mff-search-input"
-                placeholder="Ask a question about the JFK assassination, Civil Rights, or other historical events..."
-                required
-              />
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="mff-search-button"
-              >
-                {isLoading ? <Loader size={16} className="mff-spinner" /> : 'Search'}
-              </button>
-            </div>
-            <div className="mff-checkbox-container">
-              <div className="mff-checkbox-group">
+        <div className="mff-tabs">
+          <button 
+            className={`mff-tab ${activeTab === 'search' ? 'mff-tab-active' : ''}`}
+            onClick={() => setActiveTab('search')}
+          >
+            <Search size={16} className="mff-tab-icon" />
+            Search
+          </button>
+          <button 
+            className={`mff-tab ${activeTab === 'upload' ? 'mff-tab-active' : ''}`}
+            onClick={() => setActiveTab('upload')}
+          >
+            <Upload size={16} className="mff-tab-icon" />
+            Upload
+          </button>
+        </div>
+
+        {activeTab === 'search' ? (
+          <div className="mff-search-section">
+            <form onSubmit={handleSubmit} className="mff-search-form">
+              <div className="mff-search-container">
                 <input
-                  type="checkbox"
-                  id="citations"
-                  checked={showCitations}
-                  onChange={() => setShowCitations(!showCitations)}
-                  className="mff-checkbox"
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="mff-search-input"
+                  placeholder="Ask a question about the JFK assassination, Civil Rights, or other historical events..."
+                  required
                 />
-                <label htmlFor="citations" className="mff-checkbox-label">
-                  Include citations
-                </label>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="mff-search-button"
+                >
+                  {isLoading ? <Loader size={16} className="mff-spinner" /> : 'Search'}
+                </button>
               </div>
-              
-              <div className="mff-checkbox-group">
-                <input
-                  type="checkbox"
-                  id="similarity"
-                  checked={showSimilarity}
-                  onChange={() => setShowSimilarity(!showSimilarity)}
-                  className="mff-checkbox"
-                />
-                <label htmlFor="similarity" className="mff-checkbox-label">
-                  Show similarity metrics
-                </label>
-              </div>
-            </div>
-          </form>
-
-          {isLoading && (
-            <div className="mff-loader">
-              <Loader className="mff-spinner" size={32} />
-              <span className="mff-loader-text">Searching documents...</span>
-            </div>
-          )}
-
-          {error && (
-            <div className="mff-error">
-              <p className="mff-error-text">
-                {error}
-              </p>
-            </div>
-          )}
-
-          {response && !isLoading && (
-            <div className="mff-response">
-              <h3 className="mff-response-title">Response</h3>
-              <div 
-                className="mff-response-content"
-                dangerouslySetInnerHTML={{ 
-                  __html: formatResponseWithCitations(response.response) 
-                }}
-              />
-              
-              {/* Confidence display */}
-              {showSimilarity && response.confidence && (
-                <div className="mff-confidence">
-                  <h4 className="mff-section-title">Confidence</h4>
-                  <div className="mff-confidence-level">
-                    <span className="mff-confidence-badge" 
-                      style={{ backgroundColor: `${getSimilarityColor(response.confidence.level)}` }}>
-                      {response.confidence.level}
-                    </span>
-                    <span className="mff-confidence-score">
-                      {Math.round(response.confidence.score * 100)}%
-                    </span>
-                  </div>
-                  <p className="mff-confidence-explanation">
-                    {response.confidence.explanation}
-                  </p>
+              <div className="mff-checkbox-container">
+                <div className="mff-checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="citations"
+                    checked={showCitations}
+                    onChange={() => setShowCitations(!showCitations)}
+                    className="mff-checkbox"
+                  />
+                  <label htmlFor="citations" className="mff-checkbox-label">
+                    Include citations
+                  </label>
                 </div>
-              )}
-              
-              {/* Source documents with similarity */}
-              {showSimilarity && response.retrieved_docs && response.retrieved_docs.length > 0 && (
-                <div className="mff-sources">
-                  <h4 className="mff-section-title">Source Documents</h4>
-                  <div className="mff-sources-list">
-                    {response.retrieved_docs.map((doc, index) => (
-                      <div key={index} className="mff-source-item">
-                        <div className="mff-source-header">
-                          <h5 className="mff-source-title">{doc.doc_title}</h5>
-                          {doc.similarity && (
-                            <div className="mff-similarity">
-                              <div className="mff-similarity-indicator" 
-                                style={{ backgroundColor: getSimilarityColor(doc.similarity_category) }}>
+                
+                <div className="mff-checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="similarity"
+                    checked={showSimilarity}
+                    onChange={() => setShowSimilarity(!showSimilarity)}
+                    className="mff-checkbox"
+                  />
+                  <label htmlFor="similarity" className="mff-checkbox-label">
+                    Show similarity metrics
+                  </label>
+                </div>
+              </div>
+            </form>
+
+            {isLoading && (
+              <div className="mff-loader">
+                <Loader className="mff-spinner" size={32} />
+                <span className="mff-loader-text">Searching documents...</span>
+              </div>
+            )}
+
+            {error && (
+              <div className="mff-error">
+                <p className="mff-error-text">
+                  {error}
+                </p>
+              </div>
+            )}
+
+            {response && !isLoading && (
+              <div className="mff-response">
+                <h3 className="mff-response-title">Response</h3>
+                <div 
+                  className="mff-response-content"
+                  dangerouslySetInnerHTML={{ 
+                    __html: formatResponseWithCitations(response.response) 
+                  }}
+                />
+                
+                {/* Confidence section removed as requested */}
+                
+                {/* Source documents with similarity */}
+                {showSimilarity && response.retrieved_docs && response.retrieved_docs.length > 0 && (
+                  <div className="mff-sources">
+                    <h4 className="mff-section-title">Source Documents</h4>
+                    <div className="mff-sources-list">
+                      {response.retrieved_docs.map((doc, index) => (
+                        <div key={index} className="mff-source-item">
+                          <div className="mff-source-header">
+                            <h5 className="mff-source-title">{doc.doc_title}</h5>
+                            {doc.similarity && (
+                              <div className="mff-similarity">
+                                <div className="mff-similarity-indicator" 
+                                  style={{ backgroundColor: getSimilarityColor(doc.similarity_category) }}>
+                                </div>
+                                <span className="mff-similarity-score">
+                                  {Math.round(doc.similarity * 100)}% match
+                                </span>
                               </div>
-                              <span className="mff-similarity-score">
-                                {Math.round(doc.similarity * 100)}% match
-                              </span>
-                            </div>
-                          )}
+                            )}
+                          </div>
+                          <p className="mff-source-preview">
+                            {doc.text && doc.text.length > 150 ? `${doc.text.substring(0, 150)}...` : doc.text}
+                          </p>
                         </div>
-                        <p className="mff-source-preview">
-                          {doc.text && doc.text.length > 150 ? `${doc.text.substring(0, 150)}...` : doc.text}
-                        </p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {/* Citations */}
-              {response.citations && Object.keys(response.citations).length > 0 && (
-                <div className="mff-citations">
-                  <h4 className="mff-section-title">Sources</h4>
-                  <ul className="mff-citations-list">
-                    {Object.entries(response.citations).map(([key, source]) => (
-                      <li key={key} className="mff-citation-item">
-                        <span className="mff-citation-number">[{key}]</span>
-                        <span className="mff-citation-text">
-                          <span className="mff-citation-title">{source.title}</span>
-                          {source.source !== source.title && ` - ${source.source}`}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                )}
+                
+                {/* Citations */}
+                {response.citations && Object.keys(response.citations).length > 0 && (
+                  <div className="mff-citations">
+                    <h4 className="mff-section-title">Sources</h4>
+                    <ul className="mff-citations-list">
+                      {Object.entries(response.citations).map(([key, source]) => (
+                        <li key={key} className="mff-citation-item">
+                          <span className="mff-citation-number">[{key}]</span>
+                          <span className="mff-citation-text">
+                            <span className="mff-citation-title">{source.title}</span>
+                            {source.source !== source.title && ` - ${source.source}`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-              <div className="mff-metadata">
-                <FileText size={16} className="mff-metadata-icon" />
-                <span>
-                  {response.num_docs_retrieved} documents retrieved
-                </span>
+                <div className="mff-metadata">
+                  <FileText size={16} className="mff-metadata-icon" />
+                  <span>
+                    {response.num_docs_retrieved} documents retrieved
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <FileUpload />
+        )}
       </main>
 
       <footer className="mff-footer">
