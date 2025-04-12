@@ -186,7 +186,14 @@ function App() {
                       {response.retrieved_docs.map((doc, index) => (
                         <div key={index} className="mff-source-item">
                           <div className="mff-source-header">
-                            <h5 className="mff-source-title">{doc.doc_title}</h5>
+                            <div className="mff-source-title-info">
+                              <h5 className="mff-source-title">{doc.doc_title}</h5>
+                              {doc.page_num > 0 && (
+                                <span className="mff-page-info">
+                                  Page {doc.page_num}{doc.total_pages > 0 ? ` of ${doc.total_pages}` : ''}
+                                </span>
+                              )}
+                            </div>
                             {doc.similarity && (
                               <div className="mff-similarity">
                                 <div className="mff-similarity-indicator" 
@@ -217,6 +224,7 @@ function App() {
                           <span className="mff-citation-number">[{key}]</span>
                           <span className="mff-citation-text">
                             <span className="mff-citation-title">{source.title}</span>
+                            {source.page_num > 0 && <span className="mff-citation-page"> (Page {source.page_num})</span>}
                             {source.source !== source.title && ` - ${source.source}`}
                           </span>
                         </li>

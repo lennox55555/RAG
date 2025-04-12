@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Upload, CheckCircle, AlertCircle, FileText, Database, Loader, X } from 'lucide-react';
-import { uploadFile } from './api';
+import React, { useState, useEffect, useRef } from 'react';
+import { Upload, CheckCircle, AlertCircle, FileText, Database, Loader, X, Package, File } from 'lucide-react';
+import { uploadFile, getUploadStatus } from './api';
 
 function FileUpload() {
   const [file, setFile] = useState(null);
@@ -12,6 +12,111 @@ function FileUpload() {
     chunkOverlap: 100,
     clearIndex: false
   });
+  const [taskId, setTaskId] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [processingMessage, setProcessingMessage] = useState('');
+  
+  // For polling upload status
+  const pollingInterval = useRef(null);
+
+  // Effect for polling task status
+  useEffect(() => {
+    // Clean up polling on unmount
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+      }
+    };
+  }, []);
+  
+  // Start polling when taskId is set
+  useEffect(() => {
+    if (taskId) {
+      startPollingStatus(taskId);
+    }
+    
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+        pollingInterval.current = null;
+      }
+    };
+  }, [taskId]);
+  
+  // Poll for upload status
+  const startPollingStatus = (id) => {
+    // Stop any existing polling
+    if (pollingInterval.current) {
+      clearInterval(pollingInterval.current);
+    }
+    
+    // Check immediately then start polling
+    checkUploadStatus(id);
+    
+    pollingInterval.current = setInterval(() => {
+      checkUploadStatus(id);
+    }, 2000); // Check every 2 seconds
+  };
+  
+  const checkUploadStatus = async (id) => {
+    try {
+      const status = await getUploadStatus(id);
+      console.log("Status update:", status); // Debug log
+      
+      // Update UI with latest status
+      setProgress(status.progress || 0);
+      setProcessingStatus(status.status || 'processing');
+      setProcessingMessage(status.message || 'Processing...');
+      
+      // If complete, stop polling and set result
+      if (status.is_complete) {
+        console.log("Processing complete:", status); // Debug log
+        
+        if (pollingInterval.current) {
+          clearInterval(pollingInterval.current);
+          pollingInterval.current = null;
+        }
+        
+        setIsUploading(false);
+        setTaskId(null);
+        
+        // Create result object for display
+        const result = {
+          status: status.status || 'complete',
+          message: status.message || 'Processing completed',
+          filename: file ? file.name : 'document',
+          documents_processed: status.documents_processed || 0,
+          chunks_created: status.chunks_created || 0,
+          chunks_indexed: status.chunks_indexed || 0
+        };
+        
+        // Special handling for error states
+        if (status.status === 'error') {
+          result.status = 'error';
+          console.error("Upload processing failed:", status.message);
+        }
+        
+        setUploadResult(result);
+      }
+    } catch (err) {
+      console.error('Error checking upload status:', err);
+      
+      // After several retries, assume server error and stop polling
+      const failedChecks = (pollingInterval.retryCount || 0) + 1;
+      pollingInterval.retryCount = failedChecks;
+      
+      if (failedChecks > 5) {
+        if (pollingInterval.current) {
+          clearInterval(pollingInterval.current);
+          pollingInterval.current = null;
+        }
+        
+        setIsUploading(false);
+        setError(`Lost connection to server while processing: ${err.message}`);
+      }
+    }
+  };
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -19,6 +124,10 @@ function FileUpload() {
       setFile(selectedFile);
       setError(null);
       setUploadResult(null);
+      setTaskId(null);
+      setProgress(0);
+      setProcessingStatus('');
+      setProcessingMessage('');
     }
   };
 
@@ -39,23 +148,34 @@ function FileUpload() {
     }
 
     const fileExtension = file.name.split('.').pop().toLowerCase();
-    if (!['pdf', 'csv', 'json'].includes(fileExtension)) {
-      setError('Only PDF, CSV, and JSON files are supported');
+    if (!['pdf', 'csv', 'json', 'zip'].includes(fileExtension)) {
+      setError('Only PDF, CSV, JSON, and ZIP files are supported');
       return;
     }
 
     setIsUploading(true);
     setError(null);
+    setProgress(0);
+    setProcessingStatus('uploading');
+    setProcessingMessage('Uploading file...');
     
     try {
       const result = await uploadFile(file, options);
-      setUploadResult(result);
-      setFile(null);
-      // Reset file input
-      e.target.reset();
+      
+      // If we get a task ID, start polling for status
+      if (result.task_id) {
+        setTaskId(result.task_id);
+        // Don't set upload result yet, we'll get it from polling
+      } else {
+        // We got an immediate result (unlikely with new implementation)
+        setUploadResult(result);
+        setIsUploading(false);
+        setFile(null);
+        // Reset file input
+        e.target.reset();
+      }
     } catch (err) {
       setError(err.message || 'An error occurred while uploading the file');
-    } finally {
       setIsUploading(false);
     }
   };
@@ -64,6 +184,16 @@ function FileUpload() {
     setFile(null);
     setUploadResult(null);
     setError(null);
+    setTaskId(null);
+    setProgress(0);
+    setProcessingStatus('');
+    setProcessingMessage('');
+    
+    // Clear any polling interval
+    if (pollingInterval.current) {
+      clearInterval(pollingInterval.current);
+      pollingInterval.current = null;
+    }
   };
 
   return (
@@ -74,20 +204,20 @@ function FileUpload() {
       </p>
 
       {uploadResult ? (
-        <div className={`mff-upload-result ${uploadResult.status === 'success' ? 'mff-upload-success' : 'mff-upload-error'}`}>
-          {uploadResult.status === 'success' ? (
-            <CheckCircle className="mff-result-icon mff-success-icon" size={40} />
-          ) : (
+        <div className={`mff-upload-result ${uploadResult.status === 'error' ? 'mff-upload-error' : 'mff-upload-success'}`}>
+          {uploadResult.status === 'error' ? (
             <AlertCircle className="mff-result-icon mff-error-icon" size={40} />
+          ) : (
+            <CheckCircle className="mff-result-icon mff-success-icon" size={40} />
           )}
 
           <h4 className="mff-result-title">
-            {uploadResult.status === 'success' ? 'Upload Successful' : 'Upload Failed'}
+            {uploadResult.status === 'error' ? 'Upload Failed' : 'Upload Successful'}
           </h4>
           
           <p className="mff-result-message">{uploadResult.message}</p>
           
-          {uploadResult.status === 'success' && (
+          {uploadResult.chunks_created > 0 && (
             <div className="mff-upload-stats">
               <div className="mff-stat">
                 <FileText size={16} />
@@ -115,7 +245,7 @@ function FileUpload() {
               <input 
                 type="file" 
                 onChange={handleFileChange} 
-                accept=".pdf,.csv,.json"
+                accept=".pdf,.csv,.json,.zip"
                 className="mff-file-input"
               />
               <div className="mff-file-input-ui">
@@ -202,7 +332,7 @@ function FileUpload() {
               {isUploading ? (
                 <>
                   <Loader size={16} className="mff-spinner" />
-                  Uploading...
+                  {processingStatus === 'uploading' ? 'Uploading...' : 'Processing...'}
                 </>
               ) : (
                 <>
@@ -222,6 +352,25 @@ function FileUpload() {
             )}
           </div>
 
+          {/* Progress bar for uploads */}
+          {isUploading && (
+            <div className="mff-upload-progress">
+              <div className="mff-progress-bar-container">
+                <div 
+                  className="mff-progress-bar" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+              <div className="mff-progress-info">
+                <div className="mff-progress-detail">
+                  <span className="mff-progress-percentage">{Math.round(progress)}%</span>
+                  <span className="mff-progress-stage">{processingStatus}</span>
+                </div>
+                <span className="mff-progress-status">{processingMessage}</span>
+              </div>
+            </div>
+          )}
+          
           <div className="mff-upload-note">
             <p>
               <strong>Notes:</strong>
@@ -230,7 +379,8 @@ function FileUpload() {
               <li>PDF files will be processed using OCR if needed</li>
               <li>CSV files must include "title" and "contents" (or "text") columns</li>
               <li>JSON files must include "title" and "text" fields</li>
-              <li>Maximum file size: 10MB</li>
+              <li>ZIP files can contain multiple PDFs that will all be processed</li>
+              <li>No file size limit - large files will be processed in the background</li>
             </ul>
           </div>
         </form>

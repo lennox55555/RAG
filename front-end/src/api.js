@@ -78,7 +78,7 @@ export async function updateSimilarityThreshold(threshold) {
  * @param {number} options.chunkSize - The chunk size for document splitting
  * @param {number} options.chunkOverlap - The overlap between chunks
  * @param {boolean} options.clearIndex - Whether to clear the index before upload
- * @returns {Promise<Object>} - The upload response
+ * @returns {Promise<Object>} - The upload response with task ID
  */
 export async function uploadFile(file, options = {}) {
   try {
@@ -101,6 +101,29 @@ export async function uploadFile(file, options = {}) {
     return await response.json();
   } catch (error) {
     console.error('Error uploading file:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get the status of a file upload task
+ * @param {string} taskId - The task ID to check
+ * @returns {Promise<Object>} - The task status response
+ */
+export async function getUploadStatus(taskId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/upload/status/${taskId}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Upload task not found');
+      }
+      throw new Error(`Failed to get upload status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching upload status:', error);
     throw error;
   }
 }

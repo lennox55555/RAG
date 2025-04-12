@@ -13,7 +13,7 @@ from wordsegment import load, segment
 from logger_config import setup_logger
 logger = setup_logger("document_processor")
 
-# load word segmentation dict
+# load word segmentation dictionary
 load()
 
 class DataReader:
@@ -21,7 +21,7 @@ class DataReader:
         self.data_path = data_path
         
     def read_data(self) -> List[Dict[str, Any]]:
-        # read json data
+        # read json data from file
         try:
             with open(self.data_path, 'r', encoding='utf-8') as file:
                 data = json.load(file)
@@ -48,20 +48,20 @@ class DataReader:
             return []   
     
     def get_document_by_id(self, doc_id: int) -> Dict[str, Any]:
-        # get doc by index
+        # get document by index
         data = self.read_data()
         if 0 <= doc_id < len(data):
             return data[doc_id]
         return {}
     
     def get_all_documents(self) -> List[Dict[str, Any]]:
-        # get all docs
+        # get all documents
         return self.read_data()
 
 class PDFProcessor:
     @staticmethod
     def preprocess_text(text: str) -> str:
-        # add spaces between run-together words
+        # separate run-together words with spaces
         lines = text.split("\n")
         processed_lines = []
         
@@ -79,32 +79,86 @@ class PDFProcessor:
         return "\n".join(processed_lines)
 
     @staticmethod
-    def extract_text_from_pdf(pdf_path: str) -> str:
-        # extract text from pdf using pypdf2 or ocr
-        text = ""
+    def extract_text_from_pdf(pdf_path: str, progress_callback=None) -> Dict[str, Any]:
+        """
+        extract text from pdf with page tracking and progress updates
+        
+        args:
+            pdf_path: path to pdf file
+            progress_callback: callback for progress updates
+                              func(stage, current, total)
+        """
+        pages_text = {}
+        full_text = ""
+        total_pages = 0
+        
         try:
-            # try direct extraction first
+            # try direct text extraction first
             with open(pdf_path, 'rb') as file:
                 reader = PyPDF2.PdfReader(file)
-                for page in reader.pages:
+                total_pages = len(reader.pages)
+                
+                # report initial progress
+                if progress_callback:
+                    progress_callback('extract', 0, total_pages)
+                
+                # process each page
+                for page_idx, page in enumerate(reader.pages):
+                    page_num = page_idx + 1  # use 1-based page numbers
+                    
+                    # update progress
+                    if progress_callback:
+                        progress_callback('extract', page_num, total_pages)
+                    
+                    # get text from page
                     page_text = page.extract_text()
-                    if page_text:
-                        text += page_text + "\n"
+                    
+                    if page_text and page_text.strip():
+                        # process text for this page
+                        processed_page_text = PDFProcessor.preprocess_text(page_text.strip())
+                        pages_text[page_num] = processed_page_text
+                        full_text += processed_page_text + "\n"
             
-            # if no text found, try ocr
-            if not text.strip():
+            # fallback to ocr if no text found
+            if not full_text.strip():
                 logger.info(f"No text extracted directly from {pdf_path}, using OCR...")
                 images = convert_from_path(pdf_path)
-                for image in images:
+                total_pages = len(images)
+                
+                # report initial ocr progress
+                if progress_callback:
+                    progress_callback('ocr', 0, total_pages)
+                
+                # process each page with ocr
+                for page_idx, image in enumerate(images):
+                    page_num = page_idx + 1  # use 1-based page numbers
+                    
+                    # update ocr progress
+                    if progress_callback:
+                        progress_callback('ocr', page_num, total_pages)
+                    
+                    # perform ocr on image
                     page_text = pytesseract.image_to_string(image)
-                    text += page_text + "\n"
+                    
+                    if page_text and page_text.strip():
+                        # process ocr text
+                        processed_page_text = PDFProcessor.preprocess_text(page_text.strip())
+                        pages_text[page_num] = processed_page_text
+                        full_text += processed_page_text + "\n"
             
-            # preprocess text
-            processed_text = PDFProcessor.preprocess_text(text.strip())
-            return processed_text
+            # return extracted text with page information
+            return {
+                "full_text": full_text.strip(),
+                "pages_text": pages_text,
+                "total_pages": total_pages
+            }
         except Exception as e:
             logger.error(f"Error extracting text from {pdf_path}: {str(e)}")
-            return ""
+            return {
+                "full_text": "",
+                "pages_text": {},
+                "total_pages": 0
+            }
 
     @staticmethod
     def process_pdfs_to_json(pdf_folder: str, output_folder: str):
@@ -275,6 +329,46 @@ class TextChunker:
         
         return chunks
     
+    def find_page_for_chunk(self, chunk_text: str, pages_dict: Dict[int, str]) -> int:
+        """Find the page number that contains the majority of this chunk's text"""
+        if not pages_dict:
+            return 0
+            
+        # If only one page, it must be from that page
+        if len(pages_dict) == 1:
+            return list(pages_dict.keys())[0]
+            
+        # Score each page by how much of the chunk text appears in it
+        page_scores = {}
+        
+        # Simplify chunk text for matching (remove whitespace variations)
+        simplified_chunk = ' '.join(chunk_text.split())
+        
+        for page_num, page_text in pages_dict.items():
+            # Simplify page text
+            simplified_page = ' '.join(page_text.split())
+            
+            # Check if chunk appears in page
+            if simplified_chunk in simplified_page:
+                # Exact match, definitely from this page
+                return page_num
+                
+            # Calculate how many characters of chunk appear in this page
+            # Use a simple word-based overlap metric
+            chunk_words = set(simplified_chunk.lower().split())
+            page_words = set(simplified_page.lower().split())
+            common_words = chunk_words.intersection(page_words)
+            
+            if common_words:
+                page_scores[page_num] = len(common_words) / len(chunk_words)
+        
+        # Return page with highest score, or first page if none match
+        if page_scores:
+            return max(page_scores.items(), key=lambda x: x[1])[0]
+        
+        # If we can't determine, use first page
+        return min(pages_dict.keys())
+
     def chunk_documents(self, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         # process docs into chunks
         all_chunks = []
@@ -284,6 +378,8 @@ class TextChunker:
             text = doc.get("text", "")
             source = doc.get("source", "")
             key = doc.get("key", f"doc_{doc_idx}")
+            pages = doc.get("pages", {})  # Dictionary mapping page numbers to text
+            total_pages = doc.get("total_pages", 0)
             
             # skip empty docs
             if not text:
@@ -297,11 +393,20 @@ class TextChunker:
             
             # add metadata
             for chunk_idx, chunk in enumerate(chunked):
+                chunk_text = chunk["text"]
+                
+                # Determine which page this chunk comes from (if PDF)
+                page_num = 0
+                if pages:
+                    page_num = self.find_page_for_chunk(chunk_text, pages)
+                
                 chunk["doc_index"] = doc_idx
                 chunk["chunk_id"] = chunk_idx
                 chunk["doc_key"] = key
                 chunk["doc_title"] = title
                 chunk["source"] = source
+                chunk["page_num"] = page_num
+                chunk["total_pages"] = total_pages
                 
                 all_chunks.append(chunk)
         

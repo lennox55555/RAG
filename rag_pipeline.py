@@ -163,19 +163,27 @@ Format your response in a scholarly tone appropriate for historical research. Ci
                     doc_source = match["metadata"].get("source", "")
                     
                     # add to retrieved docs for frontend
+                    # Extract page information if available
+                    page_num = match["metadata"].get("page_num", 0)
+                    total_pages = match["metadata"].get("total_pages", 0)
+                    
                     retrieved_docs.append({
                         "doc_title": doc_title,
                         "source": doc_source,
                         "text": doc_text,
                         "similarity": similarity_score,
-                        "similarity_category": self._get_similarity_category(similarity_score)
+                        "similarity_category": self._get_similarity_category(similarity_score),
+                        "page_num": page_num,
+                        "total_pages": total_pages
                     })
                     
                     if with_citations:
                         citations[str(i+1)] = {
                             "title": doc_title,
                             "source": doc_source,
-                            "similarity": similarity_score
+                            "similarity": similarity_score,
+                            "page_num": page_num,
+                            "total_pages": total_pages
                         }
 
             # generate response

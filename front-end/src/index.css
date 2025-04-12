@@ -322,10 +322,30 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.mff-source-title-info {
+  display: flex;
+  flex-direction: column;
+}
+
 .mff-source-title {
   font-size: 1rem;
   margin: 0;
   font-weight: bold;
+}
+
+.mff-page-info {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 2px;
+  font-weight: normal;
+  font-style: italic;
+}
+
+.mff-citation-page {
+  font-size: 0.85rem;
+  color: #555;
+  font-weight: normal;
+  font-style: italic;
 }
 
 .mff-similarity {

@@ -214,6 +214,64 @@
   }
 }
 
+/* Upload Progress Bar */
+.mff-upload-progress {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.mff-progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.mff-progress-bar {
+  height: 100%;
+  background-color: #800000;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.mff-progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 6px;
+}
+
+.mff-progress-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mff-progress-percentage {
+  font-weight: bold;
+  color: #800000;
+}
+
+.mff-progress-stage {
+  text-transform: capitalize;
+  background-color: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #555;
+}
+
+.mff-progress-status {
+  font-style: italic;
+  color: #666;
+  margin-top: 2px;
+}
+
 /* Notes */
 .mff-upload-note {
   background-color: #f9f9f9;

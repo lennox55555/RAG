@@ -142,7 +142,9 @@ class EmbeddingService:
                     "text": chunk["text"],
                     "doc_title": chunk["doc_title"],
                     "source": chunk["source"],
-                    "doc_key": chunk["doc_key"]
+                    "doc_key": chunk["doc_key"],
+                    "page_num": chunk.get("page_num", 0),
+                    "total_pages": chunk.get("total_pages", 0)
                 }
                 
                 vectors.append({
